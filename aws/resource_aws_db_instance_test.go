@@ -3623,6 +3623,16 @@ resource "aws_db_instance" "test" {
 }
 
 const testAccAWSDBInstanceBaseConfig = `
+data "aws_rds_engine_version" "test" {
+  engine = "mysql"
+}
+
+data "aws_rds_orderable_db_instance" "test" {
+  engine                     = data.aws_rds_engine_version.test.engine
+  engine_version             = data.aws_rds_engine_version.test.version
+  preferred_instance_classes = ["db.t3.micro", "db.t2.micro", "db.t3.small"]
+}
+
 resource "aws_db_instance" "test" {
   allocated_storage       = 10
   backup_retention_period = 1
@@ -3630,7 +3640,7 @@ resource "aws_db_instance" "test" {
   engine_version          = data.aws_rds_orderable_db_instance.test.engine_version
   instance_class          = data.aws_rds_orderable_db_instance.test.instance_class
   name                    = "baz"
-  parameter_group_name    = "default.mysql5.6"
+  parameter_group_name    = "default.${data.aws_rds_engine_version.test.parameter_group_family}"
   password                = "barbarbarbar"
   skip_final_snapshot     = true
   username                = "foo"
@@ -3639,7 +3649,6 @@ resource "aws_db_instance" "test" {
 
 func testAccAWSDBInstanceConfig_RestoreToPointInTime_SourceIdentifier() string {
 	return composeConfig(
-		testAccAWSDBInstanceConfig_orderableClassMysql(),
 		testAccAWSDBInstanceBaseConfig,
 		fmt.Sprintf(`
 resource "aws_db_instance" "restore" {
@@ -3656,7 +3665,6 @@ resource "aws_db_instance" "restore" {
 
 func testAccAWSDBInstanceConfig_RestoreToPointInTime_SourceResourceID() string {
 	return composeConfig(
-		testAccAWSDBInstanceConfig_orderableClassMysql(),
 		testAccAWSDBInstanceBaseConfig,
 		fmt.Sprintf(`
 resource "aws_db_instance" "restore" {
